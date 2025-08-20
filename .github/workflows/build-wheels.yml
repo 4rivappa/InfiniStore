@@ -1,0 +1,65 @@
+name: Wheel builder
+
+on:
+  push:
+    tags:
+      - v*
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build_wheels:
+    name: Build wheel ${{ matrix.python }}/${{ matrix.buildplat }}
+    runs-on: ${{ matrix.buildplat }}
+    strategy:
+      fail-fast: false
+      matrix:
+        buildplat: [ubuntu-22.04, ubuntu-22.04-arm]
+        python: ["3.10", "3.11", "3.12"]
+    steps:
+      - name: checkout codebase
+        uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      
+      - name: install dependencies
+        run: |
+          sudo apt update -y
+          sudo apt install flatbuffers-compiler -y
+          sudo apt install libuv1-dev -y
+          sudo apt install libfmt-dev -y
+          sudo apt install libboost-all-dev -y
+          sudo apt install libspdlog-dev -y
+          sudo apt install flatbuffers-compiler libflatbuffers-dev -y
+
+          pip install auditwheel
+          sudo apt install patchelf -y
+
+          flatc --version
+      
+      - name: build wheel files
+        run: |
+          chmod +x ./build_manylinux_wheels.sh
+          bash ./build_manylinux_wheels.sh
+      
+      - name: Check wheel files
+        run: |
+          ls -al ./wheelhouse/
+      
+      # - name: Install cibuildwheel
+      #   run: python -m pip install cibuildwheel==3.1.4
+      
+      # - name: Build wheels
+      #   run: python -m cibuildwheel --output-dir wheelhouse
+      #   env:
+      #     CIBW_BUILD: ${{ matrix.python }}-${{ matrix.buildplat[1] }}
+
+
+      # - name: Build wheels
+      #   uses: pypa/cibuildwheel@352e01339f0a173aa2a3eb57f01492e341e83865  # v3.1.3
+      #   env:
+      #     CIBW_BUILD: ${{ matrix.python }}-${{ matrix.buildplat[1] }}
